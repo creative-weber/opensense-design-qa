@@ -1,0 +1,232 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Project ──────────────────────────────────────────────────────────────────
+
+model Project {
+  id        String     @id @default(uuid())
+  name      String     @db.VarChar(200)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  auditRuns AuditRun[]
+
+  @@map("projects")
+}
+
+// ─── AuditRun ─────────────────────────────────────────────────────────────────
+
+model AuditRun {
+  id             String        @id @default(uuid())
+  projectId      String        @map("project_id")
+  url            String
+  status         AuditRunStatus @default(queued)
+  figmaFrameUrl  String?       @map("figma_frame_url")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  completedAt    DateTime?     @map("completed_at")
+  errorCode      String?       @map("error_code")
+  errorMessage   String?       @map("error_message")
+
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  viewportRuns   ViewportRun[]
+  figmaReference FigmaReference?
+  ignoreRules    IgnoreRule[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_runs")
+}
+
+enum AuditRunStatus {
+  queued
+  capturing
+  captured
+  running_rules
+  rules_complete
+  comparing
+  complete
+  failed
+
+  @@map("audit_run_status")
+}
+
+// ─── ViewportRun ──────────────────────────────────────────────────────────────
+
+model ViewportRun {
+  id             String            @id @default(uuid())
+  auditRunId     String            @map("audit_run_id")
+  viewport       ViewportPreset
+  viewportWidth  Int               @map("viewport_width")
+  viewportHeight Int               @map("viewport_height")
+  status         ViewportRunStatus @default(queued)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  completedAt    DateTime?         @map("completed_at")
+  errorCode      String?           @map("error_code")
+  errorMessage   String?           @map("error_message")
+
+  auditRun          AuditRun            @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  captureArtifacts  CaptureArtifact[]
+  findings          Finding[]
+
+  @@index([auditRunId])
+  @@index([status])
+  @@map("viewport_runs")
+}
+
+enum ViewportPreset {
+  desktop
+  tablet
+  mobile
+
+  @@map("viewport_preset")
+}
+
+enum ViewportRunStatus {
+  queued
+  capturing
+  captured
+  running_rules
+  rules_complete
+  comparing
+  complete
+  failed
+
+  @@map("viewport_run_status")
+}
+
+// ─── CaptureArtifact ─────────────────────────────────────────────────────────
+
+model CaptureArtifact {
+  id             String       @id @default(uuid())
+  viewportRunId  String       @map("viewport_run_id")
+  artifactType   ArtifactType @map("artifact_type")
+  storageKey     String       @map("storage_key")
+  mimeType       String       @map("mime_type") @default("image/png")
+  sizeBytes      Int?         @map("size_bytes")
+  capturedAt     DateTime     @map("captured_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  viewportRun    ViewportRun  @relation(fields: [viewportRunId], references: [id], onDelete: Cascade)
+
+  @@index([viewportRunId])
+  @@map("capture_artifacts")
+}
+
+enum ArtifactType {
+  screenshot
+  diff_image
+  figma_frame
+
+  @@map("artifact_type")
+}
+
+// ─── Finding ──────────────────────────────────────────────────────────────────
+
+model Finding {
+  id             String          @id @default(uuid())
+  viewportRunId  String          @map("viewport_run_id")
+  ruleId         String          @map("rule_id")
+  findingType    String          @map("finding_type")
+  title          String
+  description    String
+  severity       FindingSeverity
+  confidence     Float           @default(1.0)
+  ignored        Boolean         @default(false)
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  viewportRun    ViewportRun     @relation(fields: [viewportRunId], references: [id], onDelete: Cascade)
+  evidence       FindingEvidence[]
+
+  @@index([viewportRunId])
+  @@index([severity])
+  @@index([ignored])
+  @@map("findings")
+}
+
+enum FindingSeverity {
+  critical
+  high
+  medium
+  low
+  info
+
+  @@map("finding_severity")
+}
+
+// ─── FindingEvidence ─────────────────────────────────────────────────────────
+
+model FindingEvidence {
+  id                    String   @id @default(uuid())
+  findingId             String   @map("finding_id")
+  domSelector           String?  @map("dom_selector")
+  computedValue         String?  @map("computed_value")
+  expectedValue         String?  @map("expected_value")
+  screenshotRegionX     Float?   @map("screenshot_region_x")
+  screenshotRegionY     Float?   @map("screenshot_region_y")
+  screenshotRegionWidth Float?   @map("screenshot_region_width")
+  screenshotRegionHeight Float?  @map("screenshot_region_height")
+  additionalData        Json?    @map("additional_data")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  finding               Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  @@index([findingId])
+  @@map("finding_evidence")
+}
+
+// ─── FigmaReference ──────────────────────────────────────────────────────────
+
+model FigmaReference {
+  id           String               @id @default(uuid())
+  auditRunId   String               @unique @map("audit_run_id")
+  figmaFileKey String               @map("figma_file_key")
+  figmaNodeId  String               @map("figma_node_id")
+  storageKey   String?              @map("storage_key")
+  metadataJson Json?                @map("metadata_json")
+  status       FigmaReferenceStatus @default(pending)
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  auditRun     AuditRun             @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+
+  @@map("figma_references")
+}
+
+enum FigmaReferenceStatus {
+  pending
+  fetching
+  ready
+  failed
+
+  @@map("figma_reference_status")
+}
+
+// ─── IgnoreRule ───────────────────────────────────────────────────────────────
+
+model IgnoreRule {
+  id         String   @id @default(uuid())
+  auditRunId String   @map("audit_run_id")
+  selector   String?
+  ruleId     String?  @map("rule_id")
+  regionX    Float?   @map("region_x")
+  regionY    Float?   @map("region_y")
+  regionW    Float?   @map("region_w")
+  regionH    Float?   @map("region_h")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  auditRun   AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+
+  @@index([auditRunId])
+  @@map("ignore_rules")
+}

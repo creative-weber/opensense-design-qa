@@ -1,0 +1,39 @@
+{
+  "name": "@opendesign-qa/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "End-to-end tests for OpenDesign QA",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:cross-browser": "playwright test --project=web-chrome --project=web-firefox --project=web-edge",
+    "test:cross-browser:headed": "playwright test --headed --project=web-chrome --project=web-firefox --project=web-edge",
+    "test:mobile": "playwright test --project=mobile-chrome --project=mobile-safari",
+    "test:mobile:headed": "playwright test --headed --project=mobile-chrome --project=mobile-safari",
+    "test:all-browsers": "playwright test --project=web-chrome --project=web-firefox --project=web-edge --project=mobile-chrome --project=mobile-safari",
+    "test:odqa-001-005": "playwright test --grep \"ODQA-00[12345]\"",
+    "test:odqa-001-005:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-00[12345]\"",
+    "test:odqa-006-013": "playwright test --grep \"ODQA-0(0[6-9]|1[0-3])\"",
+    "test:odqa-006-013:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-0(0[6-9]|1[0-3])\"",
+    "test:odqa-014": "playwright test --grep \"ODQA-014\"",
+    "test:odqa-014:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-014\"",
+    "test:odqa-015-017": "playwright test --grep \"ODQA-01[567]\"",
+    "test:odqa-015-017:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-01[567]\"",
+    "test:odqa-018-020": "playwright test --grep \"ODQA-0(18|19|20)\"",
+    "test:odqa-018-020:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-0(18|19|20)\"",
+    "test:odqa-021-022": "playwright test --grep \"ODQA-02[12]\"",
+    "test:odqa-021-022:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-02[12]\"",
+    "test:odqa-023-029": "playwright test --grep \"ODQA-02[3-9]\"",
+    "test:odqa-023-029:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-02[3-9]\"",
+    "test:odqa-030": "playwright test --grep \"ODQA-030\"",
+    "test:odqa-030:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-030\"",
+    "test:odqa-030:cross-browser": "playwright test --grep \"ODQA-030\" --project=web-chrome --project=web-firefox --project=web-edge",
+    "test:odqa-030:cross-browser:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-030\" --project=web-chrome --project=web-firefox --project=web-edge"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "cross-env": "^7.0.3"
+  }
+}

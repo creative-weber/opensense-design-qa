@@ -1,0 +1,1 @@
+console.log('Environment test successful!');

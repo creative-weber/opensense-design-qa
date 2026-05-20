@@ -1,0 +1,21 @@
+{
+  "name": "@opendesign-qa/rules-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Built-in web design rules for OpenDesign QA",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "build": "echo 'stub'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opendesign-qa/rules-core": "workspace:*",
+    "@opendesign-qa/capture": "workspace:*"
+  },
+  "devDependencies": {
+    "@opendesign-qa/config": "workspace:*",
+    "@types/node": "^25.6.0",
+    "typescript": "^5.7.2"
+  }
+}

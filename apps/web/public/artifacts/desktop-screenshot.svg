@@ -1,0 +1,13 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="900" fill="#F8FAFC"/>
+  <rect x="64" y="46" width="1312" height="72" rx="14" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="108" y="90" fill="#0F172A" font-family="Verdana" font-size="24" font-weight="700">Captured desktop screenshot</text>
+  <rect x="64" y="150" width="1312" height="326" rx="20" fill="#1D4ED8"/>
+  <text x="112" y="250" fill="#FFFFFF" font-family="Verdana" font-size="52" font-weight="700">Mismatch evidence snapshot</text>
+  <text x="112" y="304" fill="#DBEAFE" font-family="Verdana" font-size="24" font-weight="400">This preview stands in for the captured runtime screenshot artifact.</text>
+  <rect x="810" y="196" width="500" height="240" rx="18" fill="#FFFFFF"/>
+  <rect x="102" y="526" width="1236" height="300" rx="20" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="136" y="586" fill="#1E293B" font-family="Verdana" font-size="28" font-weight="700">Why this is shown</text>
+  <text x="136" y="628" fill="#475569" font-family="Verdana" font-size="20" font-weight="400">The local dev API uses deterministic artifacts for repeatable QA runs.</text>
+  <text x="136" y="662" fill="#475569" font-family="Verdana" font-size="20" font-weight="400">Replace this with real capture storage integration when S3/Blob is wired.</text>
+</svg>

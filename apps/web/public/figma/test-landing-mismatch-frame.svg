@@ -1,0 +1,64 @@
+<svg width="1440" height="1800" viewBox="0 0 1440 1800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="1800" fill="#FFF7ED"/>
+
+  <rect x="96" y="64" width="1248" height="96" rx="16" fill="#111827"/>
+  <text x="152" y="124" fill="#F9FAFB" font-family="Verdana" font-size="32" font-weight="700">BetaForge</text>
+  <rect x="1034" y="92" width="132" height="42" rx="8" fill="#374151"/>
+  <text x="1066" y="119" fill="#F3F4F6" font-family="Verdana" font-size="16" font-weight="600">Sign in</text>
+  <rect x="1184" y="92" width="142" height="42" rx="8" fill="#F97316"/>
+  <text x="1217" y="119" fill="#111827" font-family="Verdana" font-size="16" font-weight="700">Try now</text>
+
+  <rect x="96" y="204" width="1248" height="620" rx="20" fill="#0F172A"/>
+  <rect x="168" y="262" width="260" height="38" rx="10" fill="#1E293B"/>
+  <text x="190" y="286" fill="#22D3EE" font-family="Verdana" font-size="14" font-weight="700">Release Analytics Suite</text>
+
+  <text x="168" y="374" fill="#F8FAFC" font-family="Verdana" font-size="72" font-weight="700">Reduce rollback risk</text>
+  <text x="168" y="452" fill="#F8FAFC" font-family="Verdana" font-size="72" font-weight="700">in every release.</text>
+  <text x="168" y="514" fill="#CBD5E1" font-family="Verdana" font-size="24" font-weight="400">Different headline, spacing, colors, and CTA hierarchy for mismatch testing.</text>
+
+  <rect x="168" y="572" width="220" height="60" rx="10" fill="#F97316"/>
+  <text x="215" y="610" fill="#111827" font-family="Verdana" font-size="22" font-weight="700">Try now</text>
+  <rect x="404" y="572" width="220" height="60" rx="10" fill="#111827" stroke="#22D3EE"/>
+  <text x="460" y="610" fill="#22D3EE" font-family="Verdana" font-size="22" font-weight="600">View plan</text>
+
+  <rect x="802" y="252" width="470" height="500" rx="18" fill="#E5E7EB"/>
+  <text x="836" y="306" fill="#111827" font-family="Verdana" font-size="22" font-weight="700">Deployment confidence</text>
+  <rect x="836" y="338" width="400" height="12" rx="6" fill="#9CA3AF"/>
+  <rect x="836" y="338" width="188" height="12" rx="6" fill="#F97316"/>
+  <text x="1188" y="306" fill="#F97316" font-family="Verdana" font-size="22" font-weight="700">47%</text>
+
+  <rect x="836" y="386" width="400" height="68" rx="10" fill="#F9FAFB"/>
+  <text x="860" y="427" fill="#111827" font-family="Verdana" font-size="18" font-weight="600">Regression risk</text>
+  <text x="1145" y="427" fill="#DC2626" font-family="Verdana" font-size="18" font-weight="700">High</text>
+
+  <rect x="836" y="470" width="400" height="68" rx="10" fill="#F9FAFB"/>
+  <text x="860" y="511" fill="#111827" font-family="Verdana" font-size="18" font-weight="600">Build health</text>
+  <text x="1111" y="511" fill="#2563EB" font-family="Verdana" font-size="18" font-weight="700">Stable</text>
+
+  <rect x="836" y="554" width="400" height="68" rx="10" fill="#F9FAFB"/>
+  <text x="860" y="595" fill="#111827" font-family="Verdana" font-size="18" font-weight="600">User impact</text>
+  <text x="1118" y="595" fill="#EA580C" font-family="Verdana" font-size="18" font-weight="700">Elevated</text>
+
+  <text x="96" y="920" fill="#9A3412" font-family="Verdana" font-size="48" font-weight="700">Different feature section title</text>
+  <text x="96" y="966" fill="#7C2D12" font-family="Verdana" font-size="20" font-weight="400">This intentionally conflicts with the implemented landing page copy and palette.</text>
+
+  <rect x="96" y="1008" width="402" height="280" rx="16" fill="#FFEDD5" stroke="#FDBA74"/>
+  <text x="130" y="1062" fill="#9A3412" font-family="Verdana" font-size="30" font-weight="700">Alert Streams</text>
+  <text x="130" y="1102" fill="#7C2D12" font-family="Verdana" font-size="18" font-weight="400">Prioritize risky releases with weighted signal scoring.</text>
+
+  <rect x="519" y="1008" width="402" height="280" rx="16" fill="#FFEDD5" stroke="#FDBA74"/>
+  <text x="553" y="1062" fill="#9A3412" font-family="Verdana" font-size="30" font-weight="700">Ops Map</text>
+  <text x="553" y="1102" fill="#7C2D12" font-family="Verdana" font-size="18" font-weight="400">Inspect team workflows with hot zones and ownership trails.</text>
+
+  <rect x="942" y="1008" width="402" height="280" rx="16" fill="#FFEDD5" stroke="#FDBA74"/>
+  <text x="976" y="1062" fill="#9A3412" font-family="Verdana" font-size="30" font-weight="700">Shift Reports</text>
+  <text x="976" y="1102" fill="#7C2D12" font-family="Verdana" font-size="18" font-weight="400">Produce executive updates with anomaly snapshots and trends.</text>
+
+  <rect x="96" y="1340" width="1248" height="392" rx="20" fill="#111827"/>
+  <text x="152" y="1410" fill="#F8FAFC" font-family="Verdana" font-size="44" font-weight="700">Mismatch pricing block</text>
+  <text x="152" y="1452" fill="#D1D5DB" font-family="Verdana" font-size="20" font-weight="400">Different size, spacing, CTA label, and value model.</text>
+  <text x="152" y="1558" fill="#F97316" font-family="Verdana" font-size="64" font-weight="700">$199</text>
+  <text x="306" y="1558" fill="#E5E7EB" font-family="Verdana" font-size="24" font-weight="500">monthly/team</text>
+  <rect x="152" y="1598" width="238" height="62" rx="10" fill="#22D3EE"/>
+  <text x="206" y="1637" fill="#0F172A" font-family="Verdana" font-size="22" font-weight="700">Start trial</text>
+</svg>
