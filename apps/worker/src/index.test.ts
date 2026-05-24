@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { AUDIT_QUEUE_NAME, processAuditJob, createWorker, registerShutdownHandlers } from "./index.js";
+import { AUDIT_QUEUE_NAME, processAuditJob, generateComparisonFindings, createWorker, registerShutdownHandlers } from "./index.js";
 import type { Job, Worker } from "bullmq";
 
 const {
@@ -7,15 +7,51 @@ const {
   runRulesMock,
   uploadMock,
   getSignedUrlMock,
+  diffMock,
+  clusterRegionsMock,
 } = vi.hoisted(() => ({
   captureMock: vi.fn(),
   runRulesMock: vi.fn(),
   uploadMock: vi.fn(),
   getSignedUrlMock: vi.fn(),
+  diffMock: vi.fn(),
+  clusterRegionsMock: vi.fn(),
 }));
 
 vi.mock("@opendesign-qa/capture", () => ({
   capture: captureMock,
+}));
+
+vi.mock("@opendesign-qa/compare", () => ({
+  diff: diffMock,
+  clusterRegions: clusterRegionsMock,
+}));
+
+vi.mock("@opendesign-qa/figma", () => ({
+  parseFigmaFrameReference: vi.fn(() => ({ fileKey: "abc123", nodeId: "5:10" })),
+  isParseError: vi.fn(() => false),
+}));
+
+vi.mock("@opendesign-qa/db", () => ({
+  db: {
+    auditRun: {
+      update: vi.fn().mockResolvedValue({}),
+    },
+    viewportRun: {
+      update: vi.fn().mockResolvedValue({}),
+    },
+    captureArtifact: {
+      create: vi.fn().mockResolvedValue({}),
+    },
+    figmaReference: {
+      create: vi.fn().mockResolvedValue({ id: "figma-ref-1" }),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    finding: {
+      create: vi.fn().mockResolvedValue({}),
+    },
+    $transaction: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 vi.mock("@opendesign-qa/rules-core", () => ({
@@ -81,6 +117,15 @@ describe("processAuditJob", () => {
       sizeBytes: 3,
     });
     getSignedUrlMock.mockResolvedValue("https://storage.local/signed");
+
+    diffMock.mockResolvedValue({
+      diffBuffer: Buffer.from("diff"),
+      mismatchRatio: 0.1,
+      mismatchCount: 10,
+      width: 100,
+      height: 100,
+    });
+    clusterRegionsMock.mockResolvedValue([]);
   });
 
   it("processes a job without throwing", async () => {
@@ -107,6 +152,126 @@ describe("processAuditJob", () => {
     } as unknown as Job;
 
     await expect(processAuditJob(fakeJob)).rejects.toBeDefined();
+  });
+});
+
+describe("generateComparisonFindings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    diffMock.mockResolvedValue({
+      diffBuffer: Buffer.from("diff"),
+      mismatchRatio: 0.1,
+      mismatchCount: 10,
+      width: 100,
+      height: 100,
+    });
+    clusterRegionsMock.mockResolvedValue([]);
+  });
+
+  it("calls diff and clusterRegions with the provided buffers", async () => {
+    const figmaBuffer = Buffer.from("figma");
+    const screenshotBuffer = Buffer.from("screenshot");
+
+    await generateComparisonFindings(
+      "viewport-run-1",
+      figmaBuffer,
+      screenshotBuffer,
+      undefined,
+      "run-1",
+      "desktop"
+    );
+
+    expect(diffMock).toHaveBeenCalledWith(figmaBuffer, screenshotBuffer);
+    expect(clusterRegionsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call clusterRegions when mismatchRatio is 0", async () => {
+    diffMock.mockResolvedValue({
+      diffBuffer: Buffer.from("diff"),
+      mismatchRatio: 0,
+      mismatchCount: 0,
+      width: 100,
+      height: 100,
+    });
+
+    await generateComparisonFindings(
+      "viewport-run-1",
+      Buffer.from("figma"),
+      Buffer.from("screenshot"),
+      undefined,
+      "run-1",
+      "desktop"
+    );
+
+    expect(diffMock).toHaveBeenCalledTimes(1);
+    expect(clusterRegionsMock).not.toHaveBeenCalled();
+  });
+
+  it("persists a Finding for each region returned by clusterRegions", async () => {
+    const { db } = await import("@opendesign-qa/db");
+    (db.$transaction as ReturnType<typeof vi.fn>).mockClear();
+
+    clusterRegionsMock.mockResolvedValue([
+      { x: 10, y: 20, width: 50, height: 60, area: 3000, mismatchPixels: 500, type: "missing" },
+      { x: 80, y: 90, width: 30, height: 40, area: 1200, mismatchPixels: 200, type: "restyled" },
+    ]);
+
+    await generateComparisonFindings(
+      "viewport-run-1",
+      Buffer.from("figma"),
+      Buffer.from("screenshot"),
+      undefined,
+      "run-1",
+      "desktop"
+    );
+
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
+    // $transaction is called with an array of 2 create promises
+    const calls = (db.$transaction as ReturnType<typeof vi.fn>).mock.calls[0] as unknown[];
+    expect(Array.isArray(calls?.[0])).toBe(true);
+    expect(calls?.[0] as unknown[]).toHaveLength(2);
+  });
+
+  it("maps region types to correct ruleIds and severities", async () => {
+    const { db } = await import("@opendesign-qa/db");
+    const findingCreateMock = db.finding.create as ReturnType<typeof vi.fn>;
+    findingCreateMock.mockClear();
+    // $transaction calls each create promise; mock $transaction to invoke them
+    (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      async (ops: Promise<unknown>[]) => Promise.all(ops)
+    );
+
+    clusterRegionsMock.mockResolvedValue([
+      { x: 0, y: 0, width: 20, height: 20, area: 400, mismatchPixels: 100, type: "missing" },
+      { x: 30, y: 30, width: 20, height: 20, area: 400, mismatchPixels: 80, type: "misaligned" },
+      { x: 60, y: 60, width: 20, height: 20, area: 400, mismatchPixels: 50, type: "restyled" },
+    ]);
+
+    await generateComparisonFindings(
+      "viewport-run-1",
+      Buffer.from("figma"),
+      Buffer.from("screenshot"),
+      undefined,
+      "run-1",
+      "desktop"
+    );
+
+    expect(findingCreateMock).toHaveBeenCalledTimes(3);
+
+    const calls = (findingCreateMock.mock.calls as Array<[{ data: Record<string, unknown> }]>).map((c) => c[0].data);
+    expect(calls[0]).toMatchObject({ ruleId: "figma-diff/missing", severity: "high" });
+    expect(calls[1]).toMatchObject({ ruleId: "figma-diff/misaligned", severity: "medium" });
+    expect(calls[2]).toMatchObject({ ruleId: "figma-diff/restyled", severity: "low" });
+
+    // Restore default mock behaviour
+    (db.$transaction as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+  });
+
+  it("does not throw when viewportRunId is undefined", async () => {
+    await expect(
+      generateComparisonFindings(undefined, Buffer.from("a"), Buffer.from("b"), undefined, "run-1", "desktop")
+    ).resolves.toBeUndefined();
+    expect(diffMock).not.toHaveBeenCalled();
   });
 });
 

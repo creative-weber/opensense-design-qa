@@ -4,7 +4,8 @@
   "private": true,
   "description": "End-to-end tests for OpenDesign QA",
   "scripts": {
-    "test": "playwright test",
+    "test": "playwright test --project=api --project=web-chrome",
+    "test:all": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
@@ -30,7 +31,11 @@
     "test:odqa-030": "playwright test --grep \"ODQA-030\"",
     "test:odqa-030:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-030\"",
     "test:odqa-030:cross-browser": "playwright test --grep \"ODQA-030\" --project=web-chrome --project=web-firefox --project=web-edge",
-    "test:odqa-030:cross-browser:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-030\" --project=web-chrome --project=web-firefox --project=web-edge"
+    "test:odqa-030:cross-browser:headed": "cross-env SLOW_MO=400 playwright test --headed --grep \"ODQA-030\" --project=web-chrome --project=web-firefox --project=web-edge",
+    "test:story": "playwright test --config=playwright.story.config.ts",
+    "test:story:headed": "playwright test --config=playwright.story.config.ts --headed",
+    "test:story:smoke": "playwright test --config=playwright.story.config.ts --grep \"@story-smoke\"",
+    "test:story:smoke:headed": "playwright test --config=playwright.story.config.ts --headed --grep \"@story-smoke\""
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

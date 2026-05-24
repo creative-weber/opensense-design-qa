@@ -50,6 +50,8 @@ export const AuditJobSchema = z.object({
   url: HttpUrlSchema,
   viewports: z.array(ViewportPresetSchema).min(1).max(3),
   figmaFrameUrl: z.string().url().optional().nullable(),
+  /** Maps viewport preset name to its ViewportRun DB id so the worker can persist CaptureArtifact rows. */
+  viewportRunIds: z.record(z.string(), z.string().uuid()).optional(),
 });
 
 export type AuditJobRequest = z.infer<typeof AuditJobSchema>;

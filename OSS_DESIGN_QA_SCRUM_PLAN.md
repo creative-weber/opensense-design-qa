@@ -105,6 +105,14 @@ A ticket is done when:
 
 Story point scale: 1 = trivial, 2 = small, 3 = medium, 5 = large, 8 = very large, 13 = spike or epic-level.
 
+### Status Snapshot (Verified May 21, 2026)
+
+**Done:**
+ODQA-001, ODQA-004, ODQA-005, ODQA-011, ODQA-012, ODQA-015, ODQA-016, ODQA-017, ODQA-018, ODQA-030, ODQA-031, ODQA-050
+
+**Pending:**
+ODQA-002, ODQA-003, ODQA-006, ODQA-007, ODQA-008, ODQA-009, ODQA-010, ODQA-013, ODQA-014, ODQA-019, ODQA-020, ODQA-021, ODQA-022, ODQA-023, ODQA-024, ODQA-025, ODQA-026, ODQA-027, ODQA-028, ODQA-029, ODQA-032, ODQA-033, ODQA-034, ODQA-035, ODQA-036, ODQA-037, ODQA-038, ODQA-039, ODQA-040, ODQA-041, ODQA-042, ODQA-043, ODQA-044, ODQA-045, ODQA-046, ODQA-047, ODQA-048, ODQA-049, ODQA-051
+
 ---
 
 ### EPIC EP-01: Monorepo And Development Environment

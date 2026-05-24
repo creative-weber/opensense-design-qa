@@ -1,7 +1,0 @@
-<svg width="1024" height="1365" viewBox="0 0 1024 1365" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1024" height="1365" fill="#F8FAFC"/>
-  <rect x="44" y="36" width="936" height="74" rx="14" fill="#FFFFFF" stroke="#CBD5E1"/>
-  <text x="78" y="82" fill="#0F172A" font-family="Verdana" font-size="24" font-weight="700">Captured tablet screenshot</text>
-  <rect x="44" y="142" width="936" height="420" rx="20" fill="#1D4ED8"/>
-  <text x="86" y="230" fill="#FFFFFF" font-family="Verdana" font-size="46" font-weight="700">Mismatch evidence snapshot</text>
-</svg>

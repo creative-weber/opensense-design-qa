@@ -109,8 +109,11 @@ If this is your first time opening OpenDesign QA, start with the [First-Time Use
 ## Running Tests
 
 ```bash
-# All tests across the monorepo
+# Default test run (unit/integration across apps/packages; skips e2e)
 pnpm test
+
+# Full monorepo test run (includes e2e)
+pnpm test:all
 
 # With coverage report (≥ 90% line and branch coverage required)
 pnpm test:coverage
@@ -121,6 +124,13 @@ pnpm --filter @opendesign-qa/api test
 pnpm --filter @opendesign-qa/worker test
 pnpm --filter @opendesign-qa/storage test
 pnpm --filter @opendesign-qa/web test
+```
+
+For e2e browser coverage beyond Chrome, install additional Playwright browsers first:
+
+```bash
+cd e2e
+pnpm exec playwright install
 ```
 
 ---

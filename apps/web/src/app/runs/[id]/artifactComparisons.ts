@@ -6,7 +6,7 @@ export type ArtifactResponse = {
   artifactType: "screenshot" | "diff_image" | "figma_frame";
   viewport: string;
   signedUrl?: string;
-  source?: "page_capture_stub" | "direct_image_url" | "figma_api" | "fallback_placeholder";
+  source?: "page_capture_stub" | "page_capture_live" | "direct_image_url" | "figma_api" | "fallback_placeholder";
 };
 
 export type ViewportComparison = {
@@ -14,6 +14,7 @@ export type ViewportComparison = {
   screenshot?: string;
   figmaFrame?: string;
   figmaSource?: ArtifactResponse["source"];
+  diffImage?: string;
 };
 
 export function buildViewportComparisons(
@@ -29,12 +30,16 @@ export function buildViewportComparisons(
     );
     const figmaFrame = figmaArtifact?.signedUrl;
     const figmaSource = figmaArtifact?.source;
+    const diffImage = artifacts.find(
+      (artifact) => artifact.viewport === viewportRun.viewport && artifact.artifactType === "diff_image"
+    )?.signedUrl;
 
     return {
       viewport: viewportRun.viewport,
       screenshot,
       figmaFrame,
       figmaSource,
+      diffImage,
     };
   });
 }

@@ -1,5 +1,24 @@
-import { describe, it, expect, vi } from "vitest";
-import { buildApp } from "./index.js";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { buildApp, AUDIT_QUEUE_NAME } from "./index.js";
+
+// ─── Mock BullMQ so tests do not need a live Redis ───────────────────────────
+
+vi.mock("bullmq", () => {
+  const addFn = vi.fn().mockResolvedValue({ id: "job-1" });
+  const closeFn = vi.fn().mockResolvedValue(undefined);
+  return {
+    Queue: vi.fn().mockImplementation(() => ({ add: addFn, close: closeFn })),
+  };
+});
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function makeMockQueue() {
+  return {
+    add: vi.fn().mockResolvedValue({ id: "job-1" }),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+}
 
 async function createProject(app: ReturnType<typeof buildApp>, name: string) {
   const response = await app.inject({
@@ -7,7 +26,6 @@ async function createProject(app: ReturnType<typeof buildApp>, name: string) {
     url: "/api/projects",
     payload: { name },
   });
-
   expect(response.statusCode).toBe(201);
   return (response.json() as { id: string }).id;
 }
@@ -21,61 +39,36 @@ async function createRun(
     url: "/api/runs",
     payload,
   });
-
   expect(response.statusCode).toBe(201);
-  return response.json() as { id: string; status: string };
+  return response.json() as {
+    id: string;
+    status: string;
+    viewportRuns: Array<{ id: string; viewport: string; status: string }>;
+  };
 }
 
-async function waitForRunStatus(
-  app: ReturnType<typeof buildApp>,
-  runId: string,
-  terminalStatuses: string[]
-) {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 25));
-    const response = await app.inject({
-      method: "GET",
-      url: `/api/runs/${runId}`,
-    });
-    const body = response.json() as {
-      status: string;
-      viewportRuns: Array<{ status: string; errorCode?: string; attemptsMade?: number }>;
-    };
-
-    if (terminalStatuses.includes(body.status)) {
-      return body;
-    }
-  }
-
-  throw new Error(`Run ${runId} did not reach a terminal state in time`);
-}
+// ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("GET /health", () => {
   it("returns 200 with status ok", async () => {
-    const app = buildApp();
-    const response = await app.inject({
-      method: "GET",
-      url: "/health",
-    });
-
+    const app = buildApp({ auditQueue: null });
+    const response = await app.inject({ method: "GET", url: "/health" });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: "ok" });
+    await app.close();
   });
 });
 
 describe("Zod error handler", () => {
   it("returns 400 with structured issues when a route throws ZodError", async () => {
     const { ZodError, z } = await import("zod");
-    const app = buildApp();
+    const app = buildApp({ auditQueue: null });
 
     app.get("/test-zod-error", async () => {
       z.object({ name: z.string() }).parse({ name: 123 });
     });
 
-    const response = await app.inject({
-      method: "GET",
-      url: "/test-zod-error",
-    });
+    const response = await app.inject({ method: "GET", url: "/test-zod-error" });
 
     expect(response.statusCode).toBe(400);
     const body = response.json() as { issues: { path: string; message: string }[] };
@@ -83,133 +76,221 @@ describe("Zod error handler", () => {
     expect(body.issues.length).toBeGreaterThan(0);
     expect(body.issues[0]).toHaveProperty("path");
     expect(body.issues[0]).toHaveProperty("message");
+    await app.close();
   });
 });
 
-describe("audit lifecycle", () => {
-  it("completes fixture audits with findings and screenshot artifacts", async () => {
-    const app = buildApp();
-    const projectId = await createProject(app, "Fixture Audit");
+describe("AUDIT_QUEUE_NAME", () => {
+  it("equals audit-jobs (matches worker constant)", () => {
+    expect(AUDIT_QUEUE_NAME).toBe("audit-jobs");
+  });
+});
+
+describe("POST /api/runs — BullMQ enqueueing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a run with queued status and enqueues a BullMQ job", async () => {
+    const mockQueue = makeMockQueue();
+    const app = buildApp({ auditQueue: mockQueue });
+
+    const projectId = await createProject(app, "Queue Test Project");
+    const run = await createRun(app, {
+      projectId,
+      url: "http://localhost:3000/fixtures/overflow",
+      viewports: ["desktop", "mobile"],
+    });
+
+    expect(run.status).toBe("queued");
+    expect(run.viewportRuns).toHaveLength(2);
+    expect(run.viewportRuns.every((vr) => vr.status === "queued")).toBe(true);
+
+    expect(mockQueue.add).toHaveBeenCalledTimes(1);
+    const [jobName, jobData] = mockQueue.add.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ];
+    expect(jobName).toBe("audit");
+    expect(jobData["runId"]).toBe(run.id);
+    expect(jobData["projectId"]).toBe(projectId);
+    expect(jobData["url"]).toBe("http://localhost:3000/fixtures/overflow");
+    expect(jobData["viewports"]).toEqual(["desktop", "mobile"]);
+    expect(jobData["viewportRunIds"]).toBeDefined();
+
+    await app.close();
+  });
+
+  it("includes figmaFrameUrl in the enqueued job when provided", async () => {
+    const mockQueue = makeMockQueue();
+    const app = buildApp({ auditQueue: mockQueue });
+
+    const projectId = await createProject(app, "Figma Queue Project");
+    const figmaFrameUrl =
+      "https://www.figma.com/design/abc123/Frame?node-id=1-1";
+    await createRun(app, {
+      projectId,
+      url: "http://localhost:5173",
+      viewports: ["desktop"],
+      figmaFrameUrl,
+    });
+
+    expect(mockQueue.add).toHaveBeenCalledTimes(1);
+    const [, jobData] = mockQueue.add.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ];
+    expect(jobData["figmaFrameUrl"]).toBe(figmaFrameUrl);
+
+    await app.close();
+  });
+
+  it("maps each viewport to its viewportRun ID in the enqueued job", async () => {
+    const mockQueue = makeMockQueue();
+    const app = buildApp({ auditQueue: mockQueue });
+
+    const projectId = await createProject(app, "Viewport IDs Project");
+    const run = await createRun(app, {
+      projectId,
+      url: "http://localhost:3000",
+      viewports: ["desktop", "tablet", "mobile"],
+    });
+
+    const [, jobData] = mockQueue.add.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ];
+    const viewportRunIds = jobData["viewportRunIds"] as Record<string, string>;
+    expect(Object.keys(viewportRunIds)).toEqual(
+      expect.arrayContaining(["desktop", "tablet", "mobile"])
+    );
+    for (const vr of run.viewportRuns) {
+      expect(viewportRunIds[vr.viewport]).toBe(vr.id);
+    }
+
+    await app.close();
+  });
+
+  it("still returns 201 with queued run if queue.add throws", async () => {
+    const failQueue = {
+      add: vi.fn().mockRejectedValue(new Error("Redis down")),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const app = buildApp({ auditQueue: failQueue });
+
+    const projectId = await createProject(app, "Queue Failure Project");
+    const run = await createRun(app, {
+      projectId,
+      url: "http://localhost:3000",
+      viewports: ["desktop"],
+    });
+
+    expect(run.status).toBe("queued");
+    await app.close();
+  });
+
+  it("returns 404 when projectId does not exist", async () => {
+    const app = buildApp({ auditQueue: null });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/runs",
+      payload: {
+        projectId: "00000000-0000-0000-0000-000000000000",
+        url: "http://localhost:3000",
+        viewports: ["desktop"],
+      },
+    });
+    expect(response.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("does not call queue.add when auditQueue is null", async () => {
+    const app = buildApp({ auditQueue: null });
+    const projectId = await createProject(app, "No Queue Project");
+    const run = await createRun(app, {
+      projectId,
+      url: "http://localhost:3000",
+      viewports: ["desktop"],
+    });
+    expect(run.status).toBe("queued");
+    await app.close();
+  });
+});
+
+describe("GET /api/runs/:id", () => {
+  it("returns the run with queued status", async () => {
+    const app = buildApp({ auditQueue: null });
+    const projectId = await createProject(app, "Get Run Project");
+    const run = await createRun(app, {
+      projectId,
+      url: "http://localhost:3000",
+      viewports: ["desktop"],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/runs/${run.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect((response.json() as { status: string }).status).toBe("queued");
+    await app.close();
+  });
+
+  it("returns 404 for unknown run", async () => {
+    const app = buildApp({ auditQueue: null });
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/runs/00000000-0000-0000-0000-000000000000",
+    });
+    expect(response.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe("GET /api/runs/:id/findings", () => {
+  it("returns empty findings for a newly queued run (worker not yet processed)", async () => {
+    const app = buildApp({ auditQueue: null });
+    const projectId = await createProject(app, "Findings Project");
     const run = await createRun(app, {
       projectId,
       url: "http://localhost:3000/fixtures/overflow",
       viewports: ["desktop"],
     });
 
-    expect(run.status).toBe("queued");
-
-    const finalRun = await waitForRunStatus(app, run.id, ["rules_complete"]);
-    expect(finalRun.status).toBe("rules_complete");
-    expect(finalRun.viewportRuns[0]?.status).toBe("rules_complete");
-
-    const findingsResponse = await app.inject({
-      method: "GET",
-      url: `/api/runs/${run.id}/findings`,
-    });
-    const findings = findingsResponse.json() as {
-      data: Array<{ ruleId: string; severity: string }>;
-    };
-    expect(findings.data).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ ruleId: "overflow-clipping", severity: "high" }),
-      ])
-    );
-
-    const artifactsResponse = await app.inject({
-      method: "GET",
-      url: `/api/runs/${run.id}/artifacts`,
-    });
-    const artifacts = artifactsResponse.json() as Array<{
-      storageKey: string;
-      viewport: string;
-      signedUrl: string;
-    }>;
-    expect(artifacts).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          viewport: "desktop",
-          signedUrl: expect.stringContaining("signature=test"),
-        }),
-      ])
-    );
-    expect(artifacts[0]?.storageKey).toContain(run.id);
-
-    await app.close();
-  });
-
-  it("marks unreachable targets failed with retries and no artifacts", async () => {
-    const app = buildApp();
-    const projectId = await createProject(app, "Failed Audit");
-    const run = await createRun(app, {
-      projectId,
-      url: "http://localhost:19999/no-page-here",
-      viewports: ["desktop"],
-    });
-
-    const finalRun = await waitForRunStatus(app, run.id, ["failed"]);
-    expect(finalRun.status).toBe("failed");
-    expect(finalRun.viewportRuns[0]?.status).toBe("failed");
-    expect(finalRun.viewportRuns[0]?.errorCode).toBe("NON_200_RESPONSE");
-    expect(finalRun.viewportRuns[0]?.attemptsMade).toBe(3);
-
-    const artifactsResponse = await app.inject({
-      method: "GET",
-      url: `/api/runs/${run.id}/artifacts`,
-    });
-    expect(artifactsResponse.json()).toEqual([]);
-
-    await app.close();
-  });
-
-  it("returns figma comparison findings for dashboard audits", async () => {
-    const app = buildApp();
-    const projectId = await createProject(app, "Figma Dashboard Audit");
-    const run = await createRun(app, {
-      projectId,
-      url: "http://localhost:5173",
-      viewports: ["desktop"],
-      figmaFrameUrl:
-        "https://www.figma.com/design/qV55cgBXcAXWsmdHhir6Nm/Analytics-Dashboard--Community-?node-id=2-2523",
-    });
-
-    await waitForRunStatus(app, run.id, ["rules_complete"]);
-
     const response = await app.inject({
       method: "GET",
       url: `/api/runs/${run.id}/findings`,
     });
-    const body = response.json() as {
-      data: Array<{ ruleId: string; severity: string }>;
-    };
 
-    expect(body.data).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          ruleId: "figma-comparison-layout-drift",
-          severity: "high",
-        }),
-        expect.objectContaining({
-          ruleId: "figma-comparison-visual-style",
-          severity: "medium",
-        }),
-      ])
-    );
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { data: unknown[]; total: number };
+    expect(body.data).toEqual([]);
+    expect(body.total).toBe(0);
 
     await app.close();
   });
 
-  it("creates figma frame artifacts when figmaFrameUrl is provided", async () => {
-    const app = buildApp();
-    const projectId = await createProject(app, "Figma Artifacts Audit");
+  it("returns 404 for unknown run", async () => {
+    const app = buildApp({ auditQueue: null });
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/runs/00000000-0000-0000-0000-000000000000/findings",
+    });
+    expect(response.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe("GET /api/runs/:id/artifacts", () => {
+  it("returns empty artifacts for a newly queued run (worker not yet processed)", async () => {
+    const app = buildApp({ auditQueue: null });
+    const projectId = await createProject(app, "Artifacts Project");
     const run = await createRun(app, {
       projectId,
-      url: "http://localhost:5173",
-      viewports: ["desktop", "mobile"],
-      figmaFrameUrl:
-        "https://www.figma.com/design/qV55cgBXcAXWsmdHhir6Nm/Analytics-Dashboard--Community-?node-id=2-2523",
+      url: "http://localhost:3000",
+      viewports: ["desktop"],
     });
-
-    await waitForRunStatus(app, run.id, ["rules_complete"]);
 
     const response = await app.inject({
       method: "GET",
@@ -217,164 +298,31 @@ describe("audit lifecycle", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json() as Array<{
-      artifactType: "screenshot" | "figma_frame";
-      viewport: string;
-      signedUrl: string;
-      storageKey: string;
-      source?: string;
-    }>;
-
-    const screenshots = body.filter((artifact) => artifact.artifactType === "screenshot");
-    const figmaFrames = body.filter((artifact) => artifact.artifactType === "figma_frame");
-
-    expect(screenshots).toHaveLength(2);
-    expect(figmaFrames).toHaveLength(2);
-    expect(figmaFrames[0]?.source).toBeDefined();
-    expect(figmaFrames).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          viewport: "desktop",
-          signedUrl: expect.stringContaining("figma-frame-screenshot.svg"),
-          source: "fallback_placeholder",
-        }),
-        expect.objectContaining({
-          viewport: "mobile",
-          signedUrl: expect.stringContaining("figma-frame-screenshot.svg"),
-          source: "fallback_placeholder",
-        }),
-      ])
-    );
+    expect(response.json()).toEqual([]);
 
     await app.close();
   });
 
-  it("resolves figma design links through Figma Images API when token is configured", async () => {
-    const previousToken = process.env["FIGMA_ACCESS_TOKEN"];
-    process.env["FIGMA_ACCESS_TOKEN"] = "test-figma-token";
-
-    const figmaExportUrl = "https://figma-alpha-api.s3.us-west-2.amazonaws.com/images/frame-2-2523.png";
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        images: {
-          "2:2523": figmaExportUrl,
-        },
-      }),
+  it("returns 404 for unknown run", async () => {
+    const app = buildApp({ auditQueue: null });
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/runs/00000000-0000-0000-0000-000000000000/artifacts",
     });
-    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
-
-    const app = buildApp();
-
-    try {
-      const projectId = await createProject(app, "Figma API Resolution Audit");
-      const run = await createRun(app, {
-        projectId,
-        url: "http://localhost:5173",
-        viewports: ["desktop"],
-        figmaFrameUrl:
-          "https://www.figma.com/design/qV55cgBXcAXWsmdHhir6Nm/Analytics-Dashboard--Community-?node-id=2-2523",
-      });
-
-      await waitForRunStatus(app, run.id, ["rules_complete"]);
-
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const call = fetchMock.mock.calls[0];
-      expect(String(call?.[0])).toContain(
-        "https://api.figma.com/v1/images/qV55cgBXcAXWsmdHhir6Nm"
-      );
-
-      const artifactsResponse = await app.inject({
-        method: "GET",
-        url: `/api/runs/${run.id}/artifacts`,
-      });
-
-      const artifacts = artifactsResponse.json() as Array<{
-        artifactType: "screenshot" | "figma_frame";
-        signedUrl: string;
-        source?: string;
-      }>;
-
-      const figmaArtifact = artifacts.find((artifact) => artifact.artifactType === "figma_frame");
-      expect(figmaArtifact?.signedUrl).toBe(figmaExportUrl);
-      expect(figmaArtifact?.source).toBe("figma_api");
-    } finally {
-      await app.close();
-      vi.unstubAllGlobals();
-      if (typeof previousToken === "string") {
-        process.env["FIGMA_ACCESS_TOKEN"] = previousToken;
-      } else {
-        delete process.env["FIGMA_ACCESS_TOKEN"];
-      }
-    }
+    expect(response.statusCode).toBe(404);
+    await app.close();
   });
+});
 
-  it("supports proto links with node-id in hash when resolving figma exports", async () => {
-    const previousToken = process.env["FIGMA_ACCESS_TOKEN"];
-    process.env["FIGMA_ACCESS_TOKEN"] = "test-figma-token";
-
-    const figmaExportUrl = "https://figma-alpha-api.s3.us-west-2.amazonaws.com/images/frame-proto.png";
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        images: {
-          "2:2522": figmaExportUrl,
-        },
-      }),
-    });
-    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
-
-    const app = buildApp();
-
-    try {
-      const projectId = await createProject(app, "Figma Proto Link Audit");
-      const run = await createRun(app, {
-        projectId,
-        url: "http://localhost:5173",
-        viewports: ["desktop"],
-        figmaFrameUrl:
-          "https://www.figma.com/proto/qV55cgBXcAXWsmdHhir6Nm/Analytics-Dashboard--Community-?page-id=0%3A1#node-id=2-2522",
-      });
-
-      await waitForRunStatus(app, run.id, ["rules_complete"]);
-
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const call = fetchMock.mock.calls[0];
-      expect(String(call?.[0])).toContain("ids=2%3A2522");
-
-      const artifactsResponse = await app.inject({
-        method: "GET",
-        url: `/api/runs/${run.id}/artifacts`,
-      });
-      const artifacts = artifactsResponse.json() as Array<{
-        artifactType: "screenshot" | "figma_frame";
-        signedUrl: string;
-        source?: string;
-      }>;
-      const figmaArtifact = artifacts.find((artifact) => artifact.artifactType === "figma_frame");
-      expect(figmaArtifact?.signedUrl).toBe(figmaExportUrl);
-      expect(figmaArtifact?.source).toBe("figma_api");
-    } finally {
-      await app.close();
-      vi.unstubAllGlobals();
-      if (typeof previousToken === "string") {
-        process.env["FIGMA_ACCESS_TOKEN"] = previousToken;
-      } else {
-        delete process.env["FIGMA_ACCESS_TOKEN"];
-      }
-    }
-  });
-
-  it("exports run report as json with summary and top findings", async () => {
-    const app = buildApp();
-    const projectId = await createProject(app, "Export JSON Audit");
+describe("GET /api/runs/:id/export", () => {
+  it("returns json export with empty findings summary for a queued run", async () => {
+    const app = buildApp({ auditQueue: null });
+    const projectId = await createProject(app, "Export JSON Project");
     const run = await createRun(app, {
       projectId,
       url: "http://localhost:3000/fixtures/overflow",
       viewports: ["desktop"],
     });
-
-    await waitForRunStatus(app, run.id, ["rules_complete"]);
 
     const response = await app.inject({
       method: "GET",
@@ -385,25 +333,24 @@ describe("audit lifecycle", () => {
     const body = response.json() as {
       run: { id: string; status: string };
       summary: { totalFindings: number; high: number; medium: number; low: number };
-      topBlockingFindings: Array<{ ruleId: string }>;
+      topBlockingFindings: unknown[];
     };
     expect(body.run.id).toBe(run.id);
-    expect(body.summary.totalFindings).toBeGreaterThan(0);
-    expect(body.topBlockingFindings[0]?.ruleId).toBe("overflow-clipping");
+    expect(body.run.status).toBe("queued");
+    expect(body.summary.totalFindings).toBe(0);
+    expect(body.topBlockingFindings).toEqual([]);
 
     await app.close();
   });
 
-  it("exports run report as markdown", async () => {
-    const app = buildApp();
-    const projectId = await createProject(app, "Export Markdown Audit");
+  it("returns markdown export for a queued run", async () => {
+    const app = buildApp({ auditQueue: null });
+    const projectId = await createProject(app, "Export Markdown Project");
     const run = await createRun(app, {
       projectId,
-      url: "http://localhost:3000/fixtures/overflow",
+      url: "http://localhost:3000",
       viewports: ["desktop"],
     });
-
-    await waitForRunStatus(app, run.id, ["rules_complete"]);
 
     const response = await app.inject({
       method: "GET",
@@ -415,6 +362,42 @@ describe("audit lifecycle", () => {
     expect(response.body).toContain("# Run Export:");
     expect(response.body).toContain("## Severity Summary");
 
+    await app.close();
+  });
+});
+
+describe("POST /api/runs/:id/ignore-rules", () => {
+  it("creates an ignore rule for an existing run", async () => {
+    const app = buildApp({ auditQueue: null });
+    const projectId = await createProject(app, "Ignore Rules Project");
+    const run = await createRun(app, {
+      projectId,
+      url: "http://localhost:3000",
+      viewports: ["desktop"],
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/runs/${run.id}/ignore-rules`,
+      payload: { ruleId: "overflow-clipping" },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json() as { id: string; ruleId: string; runId: string };
+    expect(body.ruleId).toBe("overflow-clipping");
+    expect(body.runId).toBe(run.id);
+
+    await app.close();
+  });
+
+  it("returns 404 for unknown run", async () => {
+    const app = buildApp({ auditQueue: null });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/runs/00000000-0000-0000-0000-000000000000/ignore-rules",
+      payload: { ruleId: "overflow-clipping" },
+    });
+    expect(response.statusCode).toBe(404);
     await app.close();
   });
 });

@@ -8,7 +8,8 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "turbo run test --filter=!@opendesign-qa/e2e",
+    "test:all": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "db:migrate": "pnpm --filter @opendesign-qa/db run migrate",
     "db:generate": "pnpm --filter @opendesign-qa/db run generate",
@@ -23,7 +24,11 @@
     "test:e2e:cross-browser:headed": "pnpm --filter @opendesign-qa/e2e run test:cross-browser:headed",
     "test:e2e:mobile": "pnpm --filter @opendesign-qa/e2e run test:mobile",
     "test:e2e:mobile:headed": "pnpm --filter @opendesign-qa/e2e run test:mobile:headed",
-    "test:e2e:all-browsers": "pnpm --filter @opendesign-qa/e2e run test:all-browsers"
+    "test:e2e:all-browsers": "pnpm --filter @opendesign-qa/e2e run test:all-browsers",
+    "test:e2e:story": "pnpm --filter @opendesign-qa/e2e run test:story",
+    "test:e2e:story:headed": "pnpm --filter @opendesign-qa/e2e run test:story:headed",
+    "test:e2e:story:smoke": "pnpm --filter @opendesign-qa/e2e run test:story:smoke",
+    "test:e2e:story:smoke:headed": "pnpm --filter @opendesign-qa/e2e run test:story:smoke:headed"
   },
   "devDependencies": {
     "node-fetch": "^3.3.2",

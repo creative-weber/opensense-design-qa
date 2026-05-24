@@ -1,0 +1,142 @@
+{
+  "run": {
+    "id": "run_sample_001",
+    "projectId": "proj_sample_001",
+    "url": "https://example.com",
+    "status": "complete",
+    "createdAt": "2026-05-24T10:00:00.000Z"
+  },
+  "summary": {
+    "totalFindings": 8,
+    "critical": 0,
+    "high": 2,
+    "medium": 3,
+    "low": 2,
+    "info": 1
+  },
+  "topBlockingFindings": [
+    {
+      "id": "finding_001",
+      "ruleId": "contrast-warning",
+      "title": "Insufficient colour contrast on CTA button",
+      "severity": "high",
+      "description": "The primary call-to-action button has a contrast ratio of 2.8:1, below the WCAG AA minimum of 4.5:1 for normal text.",
+      "evidenceLinks": ["region:240,480,160,44"],
+      "nextActions": [
+        "Increase button text colour darkness to achieve ≥ 4.5:1 ratio.",
+        "Re-run audit after updating design tokens."
+      ]
+    },
+    {
+      "id": "finding_002",
+      "ruleId": "figma-diff/missing",
+      "title": "Navigation bar item missing from live page",
+      "severity": "high",
+      "description": "The 'Pricing' navigation link present in the Figma reference frame is absent from the rendered live page at desktop viewport (1280 × 800).",
+      "evidenceLinks": ["region:560,12,80,28"],
+      "nextActions": [
+        "Verify the navigation component renders all items from the data source.",
+        "Check for conditional rendering that might hide the link."
+      ]
+    },
+    {
+      "id": "finding_003",
+      "ruleId": "alignment-drift",
+      "title": "Hero headline misaligned by 12 px",
+      "severity": "medium",
+      "description": "The H1 hero text has a left offset of 36 px instead of the expected 24 px, causing a 12 px horizontal drift from the grid baseline.",
+      "evidenceLinks": ["region:0,120,800,72"],
+      "nextActions": [
+        "Update margin-left on the hero container to match the 24 px grid baseline.",
+        "Verify on both mobile and desktop viewports."
+      ]
+    },
+    {
+      "id": "finding_004",
+      "ruleId": "typography-inconsistency",
+      "title": "Inconsistent font size in card body text",
+      "severity": "medium",
+      "description": "Three feature cards use font-size 13 px while the design system specifies 14 px (body-sm). One card deviates to 12 px.",
+      "evidenceLinks": [],
+      "nextActions": [
+        "Replace inline font-size overrides with the design-token class `text-body-sm`."
+      ]
+    },
+    {
+      "id": "finding_005",
+      "ruleId": "spacing-inconsistency",
+      "title": "Inconsistent vertical gap between cards",
+      "severity": "medium",
+      "description": "The gap between feature cards alternates between 16 px and 24 px. The Figma specification uses a uniform 24 px gap.",
+      "evidenceLinks": ["region:0,380,1280,280"],
+      "nextActions": [
+        "Set `gap: 24px` (or `gap-6` in Tailwind) on the cards grid container."
+      ]
+    },
+    {
+      "id": "finding_006",
+      "ruleId": "figma-diff/restyled",
+      "title": "Footer background colour differs from Figma reference",
+      "severity": "low",
+      "description": "The footer renders with #1a1a2e instead of the specified #0f0f1a, a brightness delta of 0.07.",
+      "evidenceLinks": ["region:0,920,1280,160"],
+      "nextActions": [
+        "Update `--color-footer-bg` CSS variable to #0f0f1a."
+      ]
+    },
+    {
+      "id": "finding_007",
+      "ruleId": "figma-diff/misaligned",
+      "title": "Social icon row shifted 8 px to the right",
+      "severity": "low",
+      "description": "The footer social-media icon row is positioned 8 px further right than in the Figma reference (mismatch ratio 3.2%).",
+      "evidenceLinks": ["region:48,956,120,32"],
+      "nextActions": [
+        "Remove the `pl-2` override on `.social-icons` and rely on the parent flex container's padding."
+      ]
+    },
+    {
+      "id": "finding_008",
+      "ruleId": "overflow-clipping",
+      "title": "Cookie banner text overflows container on mobile",
+      "severity": "info",
+      "description": "At the 375 × 812 (iPhone SE) viewport the cookie-consent banner body text clips at the right edge by approximately 6 px.",
+      "evidenceLinks": ["region:0,768,375,44"],
+      "nextActions": [
+        "Add `overflow-wrap: break-word` and right padding to the cookie banner text container."
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "artifact_001",
+      "artifactType": "screenshot",
+      "storageKey": "runs/run_sample_001/viewports/desktop/screenshot.png",
+      "signedUrl": null
+    },
+    {
+      "id": "artifact_002",
+      "artifactType": "screenshot",
+      "storageKey": "runs/run_sample_001/viewports/mobile/screenshot.png",
+      "signedUrl": null
+    },
+    {
+      "id": "artifact_003",
+      "artifactType": "figma_frame",
+      "storageKey": "runs/run_sample_001/figma/frame.png",
+      "signedUrl": null
+    },
+    {
+      "id": "artifact_004",
+      "artifactType": "diff_image",
+      "storageKey": "runs/run_sample_001/viewports/desktop/diff.png",
+      "signedUrl": null
+    },
+    {
+      "id": "artifact_005",
+      "artifactType": "dom_metadata",
+      "storageKey": "runs/run_sample_001/viewports/desktop/dom.json",
+      "signedUrl": null
+    }
+  ]
+}

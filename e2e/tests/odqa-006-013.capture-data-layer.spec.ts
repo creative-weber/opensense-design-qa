@@ -470,4 +470,92 @@ test.describe("ODQA-013 — Persist Capture Artifacts After A Run", () => {
       expect(screenshot.storageKey).toContain("desktop");
     }
   });
+
+  // DB-persistence: artifact response must include all required fields
+  test("artifact response includes viewportRunId, artifactType, storageKey, and capturedAt", async ({
+    request,
+  }) => {
+    const projectRes = await request.post("/api/projects", {
+      data: { name: "ODQA-013 Fields Test" },
+    });
+    expect(projectRes.status()).toBe(201);
+    const project = (await projectRes.json()) as { id: string };
+
+    const runRes = await request.post("/api/runs", {
+      data: {
+        projectId: project.id,
+        url: "http://localhost:3000",
+        viewports: ["desktop"],
+      },
+    });
+    expect(runRes.status()).toBe(201);
+    const run = (await runRes.json()) as { id: string };
+
+    // Wait for capture to complete
+    for (let i = 0; i < 25; i++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const pollRes = await request.get(`/api/runs/${run.id}`);
+      const body = (await pollRes.json()) as { status: string };
+      if (body.status !== "queued" && body.status !== "capturing") break;
+    }
+
+    const artifactsRes = await request.get(`/api/runs/${run.id}/artifacts`);
+    expect(artifactsRes.status()).toBe(200);
+
+    const artifacts = (await artifactsRes.json()) as Array<Record<string, unknown>>;
+    expect(artifacts.length).toBeGreaterThan(0);
+
+    const artifact = artifacts[0]!;
+    // storageKey and capturedAt are always present (in-memory or DB path)
+    expect(typeof artifact["storageKey"]).toBe("string");
+    expect(typeof artifact["capturedAt"]).toBe("string");
+    // capturedAt must be a parseable ISO timestamp
+    expect(new Date(artifact["capturedAt"] as string).getTime()).not.toBeNaN();
+    // artifactType must be a recognised value
+    expect(["screenshot", "figma_frame"]).toContain(artifact["artifactType"]);
+  });
+
+  // One artifact per viewport: multi-viewport run should yield one artifact per viewport
+  test("multi-viewport run produces one screenshot artifact per viewport", async ({
+    request,
+  }) => {
+    const projectRes = await request.post("/api/projects", {
+      data: { name: "ODQA-013 Multi-Viewport Persistence Test" },
+    });
+    expect(projectRes.status()).toBe(201);
+    const project = (await projectRes.json()) as { id: string };
+
+    const runRes = await request.post("/api/runs", {
+      data: {
+        projectId: project.id,
+        url: "http://localhost:3000",
+        viewports: ["desktop", "mobile"],
+      },
+    });
+    expect(runRes.status()).toBe(201);
+    const run = (await runRes.json()) as { id: string };
+
+    // Wait for completion
+    for (let i = 0; i < 25; i++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const pollRes = await request.get(`/api/runs/${run.id}`);
+      const body = (await pollRes.json()) as { status: string };
+      if (body.status !== "queued" && body.status !== "capturing") break;
+    }
+
+    const artifactsRes = await request.get(`/api/runs/${run.id}/artifacts`);
+    expect(artifactsRes.status()).toBe(200);
+    const artifacts = (await artifactsRes.json()) as Array<{ artifactType: string; viewport: string }>;
+
+    const screenshots = artifacts.filter((a) => a.artifactType === "screenshot");
+    const viewports = screenshots.map((a) => a.viewport);
+    expect(viewports).toContain("desktop");
+    expect(viewports).toContain("mobile");
+  });
+
+  // 404 for unknown run
+  test("GET /api/runs/:id/artifacts returns 404 for unknown run", async ({ request }) => {
+    const res = await request.get("/api/runs/00000000-0000-0000-0000-000000000000/artifacts");
+    expect(res.status()).toBe(404);
+  });
 });

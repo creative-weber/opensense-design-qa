@@ -16,7 +16,10 @@
   },
   "dependencies": {
     "@opendesign-qa/capture": "workspace:*",
+    "@opendesign-qa/compare": "workspace:*",
     "@opendesign-qa/contracts": "workspace:*",
+    "@opendesign-qa/db": "workspace:*",
+    "@opendesign-qa/figma": "workspace:*",
     "@opendesign-qa/rules-core": "workspace:*",
     "@opendesign-qa/rules-web": "workspace:*",
     "@opendesign-qa/storage": "workspace:*",

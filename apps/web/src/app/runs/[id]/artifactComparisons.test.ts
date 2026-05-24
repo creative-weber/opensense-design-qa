@@ -64,6 +64,33 @@ describe("buildViewportComparisons", () => {
       screenshot: "http://localhost:3000/artifacts/desktop-screenshot.svg",
       figmaFrame: "http://localhost:3000/artifacts/desktop-figma.svg",
       figmaSource: "fallback_placeholder",
+      diffImage: undefined,
     });
+  });
+
+  it("includes diffImage when a diff_image artifact is present", () => {
+    const comparisons = buildViewportComparisons(
+      [{ viewport: "desktop" }],
+      [
+        {
+          artifactType: "screenshot",
+          viewport: "desktop",
+          signedUrl: "http://localhost:3000/artifacts/desktop-screenshot.svg",
+        },
+        {
+          artifactType: "figma_frame",
+          viewport: "desktop",
+          signedUrl: "http://localhost:3000/artifacts/desktop-figma.svg",
+          source: "figma_api",
+        },
+        {
+          artifactType: "diff_image",
+          viewport: "desktop",
+          signedUrl: "http://localhost:3000/artifacts/desktop-diff.png",
+        },
+      ] satisfies ArtifactResponse[]
+    );
+
+    expect(comparisons[0].diffImage).toBe("http://localhost:3000/artifacts/desktop-diff.png");
   });
 });
