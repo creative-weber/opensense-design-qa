@@ -74,6 +74,7 @@ export const elementOverlapRule: Rule = {
               domSelector: a.selector,
               computedValue: `intersection area: ${area}px²`,
               expectedValue: "no intersection",
+              suggestedFix: `Fix the overlap between '${a.selector}' and '${b.selector}' (${area}px²). Check z-index stacking, position: absolute/fixed values, or negative margins that may be causing the collision.`,
             },
             {
               domSelector: b.selector,

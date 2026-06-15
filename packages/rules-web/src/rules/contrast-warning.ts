@@ -71,8 +71,7 @@ export const contrastWarningRule: Rule = {
           {
             domSelector: el.selector,
             computedValue: `contrast ratio: ${ratio.toFixed(2)} (fg: ${el.computedColor}, bg: ${el.computedBackgroundColor})`,
-            expectedValue: `contrast ratio >= ${threshold}`,
-          },
+            expectedValue: `contrast ratio >= ${threshold}`,            suggestedFix: `Increase contrast ratio to at least ${threshold}:1 on '${el.selector}'. Darken the foreground color or lighten the background. Use a contrast checker (e.g. WebAIM) to verify. See WCAG 2.1 Success Criterion 1.4.3.`,          },
         ],
       });
     }

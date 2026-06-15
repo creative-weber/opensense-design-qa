@@ -1,4 +1,16 @@
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { chromium, type Page } from "playwright";
+
+// ─── axe-core source (lazy-loaded once, injected into each page) ──────────────
+const _require = createRequire(import.meta.url);
+let _axeSource: string | null = null;
+function getAxeSource(): string {
+  if (_axeSource) return _axeSource;
+  const axePath = _require.resolve("axe-core") as string;
+  _axeSource = readFileSync(axePath, "utf-8");
+  return _axeSource;
+}
 
 // ─── Domain types ─────────────────────────────────────────────────────────────
 
@@ -51,6 +63,29 @@ export interface DomSnapshot {
   clientHeight: number;
 }
 
+// ─── Accessibility violation (from axe-core) ─────────────────────────────────
+
+export interface AccessibilityViolationNode {
+  html: string;
+  target: string[];
+  failureSummary?: string;
+}
+
+export interface AccessibilityViolation {
+  /** axe-core rule ID, e.g. "color-contrast", "image-alt" */
+  id: string;
+  impact: "minor" | "moderate" | "serious" | "critical" | null;
+  description: string;
+  /** Short actionable help text, e.g. "Images must have alternate text" */
+  help: string;
+  /** Link to the axe-core rule documentation */
+  helpUrl: string;
+  /** Relevant WCAG tags, e.g. ["wcag2a", "wcag2aa", "wcag21aa"] */
+  wcagTags: string[];
+  /** Affected DOM nodes */
+  nodes: AccessibilityViolationNode[];
+}
+
 // ─── Capture result ───────────────────────────────────────────────────────────
 
 export interface CaptureResult {
@@ -59,6 +94,8 @@ export interface CaptureResult {
   url: string;
   capturedAt: Date;
   domSnapshot: DomSnapshot[];
+  /** WCAG accessibility violations found by axe-core. Empty when axe is unavailable. */
+  accessibilityViolations: AccessibilityViolation[];
 }
 
 // ─── Capture error ────────────────────────────────────────────────────────────
@@ -161,6 +198,44 @@ export async function capture(
       type: "png",
     });
 
+    // ── Accessibility scan (axe-core) ──────────────────────────────────────────
+    let accessibilityViolations: AccessibilityViolation[] = [];
+    try {
+      await page.addScriptTag({ content: getAxeSource() });
+      accessibilityViolations = await page.evaluate(() => {
+        return new Promise<AccessibilityViolation[]>((resolve) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (globalThis as any).axe.run(
+            { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] } },
+            (err: Error | null, results: { violations: unknown[] }) => {
+              if (err) {
+                resolve([]);
+                return;
+              }
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              resolve(results.violations.map((v: any) => ({
+                id: v.id as string,
+                impact: v.impact as AccessibilityViolation["impact"],
+                description: v.description as string,
+                help: v.help as string,
+                helpUrl: v.helpUrl as string,
+                wcagTags: (v.tags as string[]).filter((t: string) => t.startsWith("wcag")),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                nodes: (v.nodes as any[]).map((n: any) => ({
+                  html: n.html as string,
+                  target: n.target as string[],
+                  failureSummary: n.failureSummary as string | undefined,
+                })),
+              })));
+            }
+          );
+        });
+      });
+    } catch {
+      // Axe injection can fail on pages with strict CSP — degrade gracefully.
+      accessibilityViolations = [];
+    }
+
     const domSnapshot = await page.evaluate(() => {
       const browserGlobal = globalThis as unknown as {
         document: { querySelectorAll: (selector: string) => unknown[] };
@@ -214,6 +289,7 @@ export async function capture(
       url,
       capturedAt: new Date(),
       domSnapshot,
+      accessibilityViolations,
     };
   } catch (error) {
     if (error instanceof CaptureError) {

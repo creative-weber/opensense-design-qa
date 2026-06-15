@@ -5,7 +5,7 @@ import { ZodError, z } from "zod";
 import { fileURLToPath } from "node:url";
 import { Queue } from "bullmq";
 import { db } from "@opendesign-qa/db";
-import { type AuditJobRequest, VIEWPORT_PRESETS } from "@opendesign-qa/contracts";
+import { type AuditJobRequest, VIEWPORT_PRESETS, ReviewFindingSchema } from "@opendesign-qa/contracts";
 import { generateJsonReport, generateMarkdownReport } from "@opendesign-qa/reporting";
 
 // ─── Environment ──────────────────────────────────────────────────────────────
@@ -615,6 +615,34 @@ export function buildApp(options?: { auditQueue?: AuditQueueLike | null }) {
     ignoreRules.get(id)!.push(rule);
 
     return reply.status(201).send(rule);
+  });
+
+  // ── Finding review workflow ────────────────────────────────────────────────
+  app.patch("/api/findings/:id/review", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = ReviewFindingSchema.parse(request.body);
+
+    // Try DB-backed update first
+    try {
+      const updated = await db.finding.update({
+        where: { id },
+        data: {
+          reviewStatus: body.status,
+          reviewNote: body.note ?? null,
+          reviewedAt: new Date(),
+        },
+        select: {
+          id: true,
+          reviewStatus: true,
+          reviewNote: true,
+          reviewedAt: true,
+        },
+      });
+      return reply.send(updated);
+    } catch (err) {
+      app.log.warn({ err, findingId: id }, "DB review update failed");
+      return reply.status(404).send({ statusCode: 404, error: "Not Found", message: "Finding not found" });
+    }
   });
 
   return app;

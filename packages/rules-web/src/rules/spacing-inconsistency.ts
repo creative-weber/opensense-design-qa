@@ -65,6 +65,7 @@ export const spacingInconsistencyRule: Rule = {
                 domSelector: a.selector,
                 computedValue: `gap: ${gap}px`,
                 expectedValue: `gap: ~${med}px`,
+                suggestedFix: `Adjust spacing between '${a.selector}' and '${b.selector}' to match the ${med}px rhythm. Use a consistent spacing scale (e.g. 4px, 8px, 16px) and apply via a design token or utility class.`,
               },
               {
                 domSelector: b.selector,

@@ -66,6 +66,7 @@ export const colorMismatchRule: Rule = {
               domSelector: el.selector,
               computedValue: `color: ${el.computedColor} (frequency: ${frequency})`,
               expectedValue: `one of: ${[...allowList].slice(0, 5).join(", ")}`,
+              suggestedFix: `Replace '${el.computedColor}' with a palette color from your design system. Consider using a CSS custom property (e.g. 'var(--color-text)') to enforce brand consistency.`,
             },
           ],
         });
@@ -84,6 +85,7 @@ export const colorMismatchRule: Rule = {
               domSelector: el.selector,
               computedValue: `background-color: ${el.computedBackgroundColor} (frequency: ${frequency})`,
               expectedValue: `one of: ${[...allowList].slice(0, 5).join(", ")}`,
+              suggestedFix: `Replace background-color '${el.computedBackgroundColor}' with a palette token. Consider using a CSS custom property to enforce brand consistency.`,
             },
           ],
         });

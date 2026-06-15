@@ -143,6 +143,10 @@ model Finding {
   severity       FindingSeverity
   confidence     Float           @default(1.0)
   ignored        Boolean         @default(false)
+  // ── Review workflow ───────────────────────────────────────────────────────
+  reviewStatus   ReviewStatus    @default(open) @map("review_status")
+  reviewNote     String?         @map("review_note")
+  reviewedAt     DateTime?       @map("reviewed_at")
   createdAt      DateTime        @default(now()) @map("created_at")
 
   viewportRun    ViewportRun     @relation(fields: [viewportRunId], references: [id], onDelete: Cascade)
@@ -151,7 +155,17 @@ model Finding {
   @@index([viewportRunId])
   @@index([severity])
   @@index([ignored])
+  @@index([reviewStatus])
   @@map("findings")
+}
+
+enum ReviewStatus {
+  open
+  acknowledged
+  ignored
+  resolved
+
+  @@map("review_status")
 }
 
 enum FindingSeverity {

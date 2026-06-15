@@ -43,6 +43,7 @@ export const overflowClippingRule: Rule = {
             domSelector: element.selector,
             computedValue: `overflow: ${element.overflow}; scrollWidth: ${element.scrollWidth}; clientWidth: ${element.clientWidth}`,
             expectedValue: "no overflow",
+            suggestedFix: `Add 'overflow: hidden' or 'overflow: auto' to ${element.selector}, or constrain its width/height. Check for content that exceeds the container bounds.`,
           },
         ],
       });

@@ -94,6 +94,7 @@ export const FindingSchema = z.object({
     "color-mismatch",
     "contrast-warning",
     "figma-comparison",
+    "accessibility",
   ]),
   title: z.string().min(1),
   description: z.string().min(1),
@@ -128,6 +129,18 @@ export const CreateIgnoreRuleSchema = z
   );
 
 export type CreateIgnoreRuleRequest = z.infer<typeof CreateIgnoreRuleSchema>;
+
+// ─── Finding review workflow ──────────────────────────────────────────────────
+
+export const ReviewStatusSchema = z.enum(["open", "acknowledged", "ignored", "resolved"]);
+export type ReviewStatus = z.infer<typeof ReviewStatusSchema>;
+
+export const ReviewFindingSchema = z.object({
+  status: ReviewStatusSchema,
+  note: z.string().max(2000).optional(),
+});
+
+export type ReviewFindingRequest = z.infer<typeof ReviewFindingSchema>;
 
 // ─── Export / report ──────────────────────────────────────────────────────────
 

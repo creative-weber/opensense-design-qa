@@ -11,6 +11,8 @@ export interface Evidence {
   domSelector?: string;
   computedValue?: string;
   expectedValue?: string;
+  /** Short, actionable fix guidance shown to the developer in the report. */
+  suggestedFix?: string;
 }
 
 // ─── Rule result ──────────────────────────────────────────────────────────────

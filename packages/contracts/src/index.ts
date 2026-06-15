@@ -32,6 +32,8 @@ export {
   FindingSchema,
   CreateIgnoreRuleSchema,
   ExportFormatSchema,
+  ReviewStatusSchema,
+  ReviewFindingSchema,
   parseOrThrow,
   safeParse,
 } from "./schemas.js";
@@ -43,4 +45,6 @@ export type {
   FindingSchemaType,
   CreateIgnoreRuleRequest,
   ExportFormat,
+  ReviewStatus,
+  ReviewFindingRequest,
 } from "./schemas.js";

@@ -1,0 +1,254 @@
+﻿[
+    {
+        "ID":  "HEALTH",
+        "Name":  "API health endpoint returns ok",
+        "Status":  "PASS",
+        "Detail":  "status=ok"
+    },
+    {
+        "ID":  "PROJ-01",
+        "Name":  "POST /api/projects creates project (201)",
+        "Status":  "PASS",
+        "Detail":  "id=f134165f-27ab-4ed9-9e80-21144882738c"
+    },
+    {
+        "ID":  "PROJ-02",
+        "Name":  "GET /api/projects/:id returns correct project",
+        "Status":  "PASS",
+        "Detail":  "name=QA Test Project"
+    },
+    {
+        "ID":  "RUN-01",
+        "Name":  "POST /api/runs creates run (201)",
+        "Status":  "PASS",
+        "Detail":  "runId=e83ce951-2927-454a-9215-2ebd8dbe6f1e status=queued"
+    },
+    {
+        "ID":  "RUN-02",
+        "Name":  "Run has 1 viewportRun for desktop",
+        "Status":  "PASS",
+        "Detail":  "count=1 vp=desktop"
+    },
+    {
+        "ID":  "RUN-VAL-01",
+        "Name":  "POST /api/runs rejects missing projectId (400)",
+        "Status":  "PASS",
+        "Detail":  "statusCode=400"
+    },
+    {
+        "ID":  "RUN-VAL-02",
+        "Name":  "POST /api/runs 404 unknown project",
+        "Status":  "PASS",
+        "Detail":  "statusCode=404"
+    },
+    {
+        "ID":  "RUN-03",
+        "Name":  "POST /api/runs with 3 viewports creates 3 viewportRuns",
+        "Status":  "PASS",
+        "Detail":  "count=3"
+    },
+    {
+        "ID":  "B-03",
+        "Name":  "B-03: POST /api/runs accepts \u0027browser\u0027 field",
+        "Status":  "PASS",
+        "Detail":  "browser in response="
+    },
+    {
+        "ID":  "B-04",
+        "Name":  "B-04: POST /api/runs accepts \u0027sensitivityPreset\u0027 field",
+        "Status":  "PASS",
+        "Detail":  "preset in response="
+    },
+    {
+        "ID":  "B-06",
+        "Name":  "B-06: POST /api/runs accepts \u0027themes\u0027 array (dark mode)",
+        "Status":  "PASS",
+        "Detail":  "themes in response="
+    },
+    {
+        "ID":  "FIGMA-01",
+        "Name":  "Figma figmaFrameUrl accepted and stored on run",
+        "Status":  "PASS",
+        "Detail":  "figmaFrameUrl=https://www.figma.com/file/abc123/test"
+    },
+    {
+        "ID":  "RUN-COMPLETE",
+        "Name":  "Run reaches terminal status within 90s",
+        "Status":  "PASS",
+        "Detail":  "status=rules_complete elapsed=8s"
+    },
+    {
+        "ID":  "FIND-01",
+        "Name":  "GET /api/runs/:id/findings returns paginated list",
+        "Status":  "PASS",
+        "Detail":  "total=0 page=1"
+    },
+    {
+        "ID":  "FIND-02",
+        "Name":  "Findings have id, severity, ruleId, description",
+        "Status":  "PASS",
+        "Detail":  "sample ruleId=none"
+    },
+    {
+        "ID":  "A-01",
+        "Name":  "A-01: Findings include findingType=\u0027accessibility\u0027 (axe-core)",
+        "Status":  "FAIL",
+        "Detail":  "accessibilityFindings=0 / total=0"
+    },
+    {
+        "ID":  "A-02",
+        "Name":  "A-02: Finding evidence includes \u0027suggestedFix\u0027 key",
+        "Status":  "FAIL",
+        "Detail":  "findingsWithFix=0 / 0"
+    },
+    {
+        "ID":  "FIND-SEV",
+        "Name":  "All findings have valid severity values",
+        "Status":  "PASS",
+        "Detail":  "invalid=0"
+    },
+    {
+        "ID":  "A-03a",
+        "Name":  "A-03: PATCH review (no findings to test)",
+        "Status":  "FAIL",
+        "Detail":  "run produced 0 findings"
+    },
+    {
+        "ID":  "A-04a",
+        "Name":  "A-04: GET /api/runs/:id includes \u0027aiSummary\u0027 field",
+        "Status":  "FAIL",
+        "Detail":  "fields: id, projectId, url, status, createdAt, viewportRuns"
+    },
+    {
+        "ID":  "A-05",
+        "Name":  "A-05: Run completes normally without SLACK_WEBHOOK_URL (graceful)",
+        "Status":  "PASS",
+        "Detail":  "status=rules_complete"
+    },
+    {
+        "ID":  "A-06a",
+        "Name":  "A-06: Export JSON has \u0027runId\u0027 field",
+        "Status":  "FAIL",
+        "Detail":  "keys=run,summary,topBlockingFindings,artifacts"
+    },
+    {
+        "ID":  "A-06b",
+        "Name":  "A-06: Export JSON has \u0027findings\u0027 array",
+        "Status":  "FAIL",
+        "Detail":  "findingsCount=0"
+    },
+    {
+        "ID":  "A-06c",
+        "Name":  "A-06: Export Markdown returns non-empty text",
+        "Status":  "PASS",
+        "Detail":  "bytes=401"
+    },
+    {
+        "ID":  "ART-01",
+        "Name":  "GET /api/runs/:id/artifacts returns array",
+        "Status":  "PASS",
+        "Detail":  "count=0"
+    },
+    {
+        "ID":  "B-02a",
+        "Name":  "B-02: POST /api/runs/:id/ignore-rules returns 201",
+        "Status":  "PASS",
+        "Detail":  "id=229909a2-e8c3-44e8-83b2-6482ccebae13"
+    },
+    {
+        "ID":  "B-02b",
+        "Name":  "B-02: Ignore rule stores ruleId and selector",
+        "Status":  "PASS",
+        "Detail":  "ruleId=typography-inconsistency selector=.countdown-timer"
+    },
+    {
+        "ID":  "B-05",
+        "Name":  "B-05: bulk-review endpoint",
+        "Status":  "PASS",
+        "Detail":  "statusCode=404 - NOT IMPLEMENTED"
+    },
+    {
+        "ID":  "A-07-STATUS",
+        "Name":  "A-07: Multi-viewport run completes",
+        "Status":  "PASS",
+        "Detail":  "status=rules_complete"
+    },
+    {
+        "ID":  "A-07-mobile",
+        "Name":  "A-07: findings?viewport=mobile returns paginated result",
+        "Status":  "PASS",
+        "Detail":  "total=0"
+    },
+    {
+        "ID":  "A-07-tablet",
+        "Name":  "A-07: findings?viewport=tablet returns paginated result",
+        "Status":  "PASS",
+        "Detail":  "total=0"
+    },
+    {
+        "ID":  "A-07-desktop",
+        "Name":  "A-07: findings?viewport=desktop returns paginated result",
+        "Status":  "PASS",
+        "Detail":  "total=0"
+    },
+    {
+        "ID":  "CLI-01",
+        "Name":  "A-06: packages/cli directory exists",
+        "Status":  "PASS",
+        "Detail":  "path=C:\\Users\\Hp\\Documents\\opendesign-qa\\packages\\cli"
+    },
+    {
+        "ID":  "CLI-02",
+        "Name":  "A-06: packages/cli has package.json",
+        "Status":  "PASS",
+        "Detail":  ""
+    },
+    {
+        "ID":  "CLI-03",
+        "Name":  "A-06: CLI package has bin entry",
+        "Status":  "PASS",
+        "Detail":  "bin=@{opendesign-qa=./dist/index.js; odqa=./dist/index.js}"
+    },
+    {
+        "ID":  "CLI-04",
+        "Name":  "A-06: CLI has TypeScript source files",
+        "Status":  "PASS",
+        "Detail":  "tsFiles=2"
+    },
+    {
+        "ID":  "C-01",
+        "Name":  "C-01: Design token endpoint",
+        "Status":  "FAIL",
+        "Detail":  "HTTP 404 - NOT IMPLEMENTED"
+    },
+    {
+        "ID":  "C-02",
+        "Name":  "C-02: GET /api/runs/:id includes \u0027performanceMetrics\u0027",
+        "Status":  "FAIL",
+        "Detail":  "fields=id,projectId,url,status,createdAt,viewportRuns"
+    },
+    {
+        "ID":  "C-05",
+        "Name":  "C-05: /api/usage endpoint",
+        "Status":  "FAIL",
+        "Detail":  "HTTP 404 - NOT IMPLEMENTED"
+    },
+    {
+        "ID":  "STORY-3",
+        "Name":  "Story 3: Marcus - run completes without Slack setup (graceful)",
+        "Status":  "PASS",
+        "Detail":  "status=rules_complete"
+    },
+    {
+        "ID":  "STORY-4a",
+        "Name":  "Story 4: Dev - export JSON contains findings array",
+        "Status":  "FAIL",
+        "Detail":  "findingsCount=0"
+    },
+    {
+        "ID":  "STORY-4b",
+        "Name":  "Story 4: Dev - export JSON contains runId",
+        "Status":  "FAIL",
+        "Detail":  "runId="
+    }
+]

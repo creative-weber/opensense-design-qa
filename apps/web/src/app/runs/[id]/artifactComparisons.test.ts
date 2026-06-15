@@ -91,6 +91,6 @@ describe("buildViewportComparisons", () => {
       ] satisfies ArtifactResponse[]
     );
 
-    expect(comparisons[0].diffImage).toBe("http://localhost:3000/artifacts/desktop-diff.png");
+    expect(comparisons[0]?.diffImage).toBe("http://localhost:3000/artifacts/desktop-diff.png");
   });
 });

@@ -1,13 +1,14 @@
 import { Worker, type Job } from "bullmq";
 import pino from "pino";
 import { AuditJobSchema, type AuditJobRequest } from "@opendesign-qa/contracts";
-import { capture, type CaptureResult } from "@opendesign-qa/capture";
+import { capture, type CaptureResult, type AccessibilityViolation } from "@opendesign-qa/capture";
 import { diff, clusterRegions, type DiffRegion } from "@opendesign-qa/compare";
 import { runRules } from "@opendesign-qa/rules-core";
 import { ALL_RULES } from "@opendesign-qa/rules-web";
 import { getStorage, type StorageAdapter } from "@opendesign-qa/storage";
 import { db } from "@opendesign-qa/db";
 import { parseFigmaFrameReference, isParseError } from "@opendesign-qa/figma";
+import { notifySlack } from "./notify-slack.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,7 @@ async function persistFindings(
                 screenshotRegionY: ev.screenshotRegion?.y ?? null,
                 screenshotRegionWidth: ev.screenshotRegion?.width ?? null,
                 screenshotRegionHeight: ev.screenshotRegion?.height ?? null,
+                additionalData: ev.suggestedFix ? { suggestedFix: ev.suggestedFix } : null,
               })),
             },
           },
@@ -184,6 +186,61 @@ async function persistFindings(
     logger.info({ viewportRunId, count: ruleResults.length }, "Persisted findings to DB");
   } catch (error) {
     logger.warn({ error, viewportRunId }, "Failed to persist findings to DB; continuing");
+  }
+}
+
+// ─── Accessibility findings persistence ──────────────────────────────────────
+
+function accessibilityImpactToSeverity(
+  impact: AccessibilityViolation["impact"]
+): "critical" | "high" | "medium" | "low" | "info" {
+  switch (impact) {
+    case "critical": return "critical";
+    case "serious": return "high";
+    case "moderate": return "medium";
+    case "minor": return "low";
+    default: return "info";
+  }
+}
+
+async function persistAccessibilityFindings(
+  viewportRunId: string | undefined,
+  violations: AccessibilityViolation[]
+): Promise<void> {
+  if (!viewportRunId || violations.length === 0) return;
+  try {
+    await db.$transaction(
+      violations.map((violation) =>
+        db.finding.create({
+          data: {
+            viewportRunId,
+            ruleId: `accessibility/${violation.id}`,
+            findingType: "accessibility",
+            title: violation.help,
+            description: `${violation.description} — ${violation.wcagTags.join(", ")}`,
+            severity: accessibilityImpactToSeverity(violation.impact),
+            confidence: 0.95,
+            evidence: {
+              create: violation.nodes.slice(0, 10).map((node) => ({
+                domSelector: node.target[0] ?? null,
+                computedValue: node.html.slice(0, 500),
+                expectedValue: violation.help,
+                additionalData: {
+                  wcagTags: violation.wcagTags,
+                  helpUrl: violation.helpUrl,
+                  impact: violation.impact,
+                  failureSummary: node.failureSummary ?? null,
+                  suggestedFix: node.failureSummary ?? `Fix: ${violation.help}. See ${violation.helpUrl}`,
+                },
+              })),
+            },
+          },
+        })
+      )
+    );
+    logger.info({ viewportRunId, count: violations.length }, "Persisted accessibility findings to DB");
+  } catch (error) {
+    logger.warn({ error, viewportRunId }, "Failed to persist accessibility findings to DB; continuing");
   }
 }
 
@@ -473,6 +530,9 @@ export async function processAuditJob(job: Job): Promise<void> {
 
       await persistFindings(viewportRunId, ruleResults);
 
+      // Persist accessibility violations (axe-core) as findings
+      await persistAccessibilityFindings(viewportRunId, captureResult.accessibilityViolations);
+
       await updateViewportRunStatus(viewportRunId, "rules_complete");
 
       summaries.push({
@@ -527,6 +587,31 @@ export async function processAuditJob(job: Job): Promise<void> {
     },
     "Audit job capture and rules execution completed"
   );
+
+  // ── Slack notification (best-effort, skipped when SLACK_WEBHOOK_URL is absent) ─
+  try {
+    const allFindings = await db.finding.findMany({
+      where: { viewportRun: { auditRunId: parsedJob.runId } },
+      select: { severity: true, title: true, ruleId: true, description: true },
+      orderBy: [{ severity: "asc" }],
+      take: 50,
+    });
+    await notifySlack({
+      runId: parsedJob.runId,
+      projectId: parsedJob.projectId,
+      url: parsedJob.url,
+      status: anyFailed ? "failed" : "complete",
+      findings: allFindings.map((f) => ({
+        severity: f.severity,
+        title: f.title,
+        ruleId: f.ruleId,
+        description: f.description,
+      })),
+      webBaseUrl: process.env["WEB_BASE_URL"],
+    });
+  } catch (err) {
+    logger.warn({ err, runId: parsedJob.runId }, "Slack notification failed; continuing");
+  }
 }
 
 // ─── Create worker ────────────────────────────────────────────────────────────

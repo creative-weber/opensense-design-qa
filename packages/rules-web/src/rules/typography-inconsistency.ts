@@ -45,6 +45,7 @@ export const typographyInconsistencyRule: Rule = {
               domSelector: el.selector,
               computedValue: `fontSize: ${el.computedFontSize}`,
               expectedValue: `one of: ${[...dominantFontSizes].join(", ") || "none established"}`,
+              suggestedFix: `Change '${el.selector}' font-size from '${el.computedFontSize}' to one of the established sizes: ${[...dominantFontSizes].slice(0, 3).join(", ")}. Consider using a CSS variable or design token to enforce the type scale.`,
             },
           ],
         });

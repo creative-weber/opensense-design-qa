@@ -46,6 +46,7 @@ export const alignmentDriftRule: Rule = {
                 domSelector: el.selector,
                 computedValue: `left: ${el.boundingBox.x}px`,
                 expectedValue: `left: ${dominantLeft}px`,
+                suggestedFix: `Align '${el.selector}' to ${dominantLeft}px left (${drift}px drift). Check for missing 'margin-left: 0', inconsistent padding, or a flex/grid alignment override.`,
               },
             ],
           });
